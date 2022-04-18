@@ -10,16 +10,16 @@ It started when I was [converiting a ruby service to go](https://www.emadelsaid.
 ## Usage
 
 - This is meant to be cloned
-- Edit the main.go constants.
-- Edit variable in db/deploy
-- Edit docker-compose.yml file to change volumes paths
-- Run bin/css to download and compile css and icons
+- Edit the `main.go` constants.
+- Run `bin/css` to download and compile css and icons
 - Copy `.env.sample` to `.env` and edit the values
 - Use `router` gorilla router or `GET`, `POST` shorthand functions...etc.
+- Edit variable in `db/deploy`
+- Edit `docker-compose.yml` file to change volumes paths
 
 ## Running
 
-All the code is in `main` package in this directory to run it with
+All the code is in `main` package in this directory.
 
 ```
 go generate // in case you changed db/query.sql
