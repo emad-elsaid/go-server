@@ -41,3 +41,12 @@ go run *.go
 - Reduce code to the minimum
 - All code is in main package no subpackages
 - Should provide main features we're used to like db connection, migrations, logging. monitoring...etc
+
+## Database
+
+If you don't need the database then remove:
+
+- `db` directory
+- `bin/db` file
+- `go generate` line from `common.go`
+- remove `sqlx` code from `common.go`
