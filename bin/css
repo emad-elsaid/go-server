@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+
+gem install --conservative sass
+wget --no-clobber --output-document=bulma.zip https://github.com/jgthms/bulma/releases/download/0.9.2/bulma-0.9.2.zip
+unzip -u bulma.zip
+
+wget --no-clobber --output-document=fontawesome.zip https://use.fontawesome.com/releases/v6.0.0/fontawesome-free-6.0.0-web.zip
+unzip -u fontawesome.zip
+mv fontawesome-free* fontawesome
+
+cat << EOT > bulma.scss
+@charset "utf-8";
+
+\$body-size: 13px;
+\$fa-font-path: "fonts";
+
+@import "bulma/bulma.sass";
+@import "./fontawesome/scss/fontawesome.scss";
+@import "./fontawesome/scss/solid.scss";
+@import "./fontawesome/scss/brands.scss";
+
+#menu-switch {
+ display: none;
+}
+#menu-switch:checked + .navbar-brand .navbar-burger span:nth-child(1) {
+  transform: translateY(5px) rotate(45deg);
+}
+#menu-switch:checked + .navbar-brand .navbar-burger span:nth-child(2) {
+  opacity: 0;
+}
+#menu-switch:checked + .navbar-brand .navbar-burger span:nth-child(3) {
+  transform: translateY(-5px) rotate(-45deg);
+}
+#menu-switch:checked ~ .navbar-menu{
+ display: block;
+}
+EOT
+
+sass --sourcemap=none \
+     --style compressed \
+     bulma.scss:public/style.css
+
+rm -rf public/fonts
+mv fontawesome/webfonts public/fonts
+rm -rf bulma* .sass-cache fontawesome*

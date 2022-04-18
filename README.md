@@ -9,15 +9,29 @@ It started when I was [converiting a ruby service to go](https://www.emadelsaid.
 
 ## Usage
 
-This is meant to be cloned and edit the main.go file.
+- This is meant to be cloned
+- Edit the main.go constants.
+- Edit variable in db/deploy
+- Edit docker-compose.yml file to change volumes paths
+- Run bin/css to download and compile css and icons
+- Copy `.env.sample` to `.env` and edit the values
+- Use `router` gorilla router or `GET`, `POST` shorthand functions...etc.
 
 ## Running
 
 All the code is in `main` package in this directory to run it with
 
 ```
+go generate // in case you changed db/query.sql
 go run *.go
 ```
+
+## Scripts
+
+- Deployment: a shell script in `db/deploy` can be used to deploy to your server. it needs `docker-compose`
+- Backup: a shell script in `db/backup` will run as a service on server to backup the database everyday
+- css compiler: a script in `db/css` will download bulma.io and fontawesome icons and compile them in one css file `public/style.css`
+- database operations: `bin/db` can be used to do database operations like migrating up/down, create, setup, seed. read it for more details
 
 ## Guidelines
 
