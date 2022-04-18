@@ -10,9 +10,10 @@ It started when I was [converiting a ruby service to go](https://www.emadelsaid.
 ## Usage
 
 - This is meant to be cloned
-- Edit the `main.go` constants.
+- Copy `.env.sample` to `.env` and edit the values and make sure it's loaded to your environment
+- Generate database code with [Sqlc](main) `bin/db setup`
+- Edit the `common.go` constants.
 - Run `bin/css` to download and compile css and icons
-- Copy `.env.sample` to `.env` and edit the values
 - Use `router` gorilla router or `GET`, `POST` shorthand functions...etc.
 - Edit variable in `db/deploy`
 - Edit `docker-compose.yml` file to change volumes paths
