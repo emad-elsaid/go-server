@@ -92,8 +92,6 @@ func Start() {
 		handler = v(handler)
 	}
 
-	http.Handle("/", handler)
-
 	srv := &http.Server{
 		Handler:      handler,
 		Addr:         BIND_ADDRESS,
