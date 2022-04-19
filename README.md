@@ -7,6 +7,16 @@ A template for Go servers. I found that I reuse some code everytime I write a go
 
 It started when I was [converiting a ruby service to go](https://www.emadelsaid.com/converting-Ruby-sinatra-project-to-Go/). I wanted to write the minimum that gives me same ruby sinatra framework feeling without using a framework. for that I broke all community rules while writing this code but at the end it worked and felt good to achieve this result.
 
+## Features
+
+- Compiles and embeds views from `views` directory
+- Postgresql operations (create, drop, setup, seed, migrate up/down)
+- Sinatra shorthand functions to define routes (GET, POST, DELETE)
+- Session/Cookies
+- Logging requests to STDOUT + response time
+- Method override with `_method` param.
+- Sqlc setup for converting queries to go
+
 ## Usage
 
 - This is meant to be cloned

@@ -8,11 +8,6 @@ import (
 	"embed"
 	"fmt"
 	"html/template"
-	"image"
-	_ "image/gif"
-	_ "image/jpeg"
-	_ "image/png"
-	"io"
 	"io/fs"
 	"log"
 	"net/http"
@@ -321,82 +316,5 @@ func NullString(s string) sql.NullString {
 	return sql.NullString{
 		String: s,
 		Valid:  len(s) > 0,
-	}
-}
-
-// VALIDATION ============================
-
-type ValidationErrors map[string][]error
-
-func (v ValidationErrors) Add(field string, err error) {
-	v[field] = append(v[field], err)
-}
-
-func ValidateStringPresent(val, key, label string, ve ValidationErrors) {
-	if len(strings.TrimSpace(val)) == 0 {
-		ve.Add(key, fmt.Errorf("%s can't be empty", label))
-	}
-}
-
-func ValidateStringLength(val, key, label string, ve ValidationErrors, min, max int) {
-	l := len(strings.TrimSpace(val))
-	if l < min || l > max {
-		ve.Add(key, fmt.Errorf("%s has to be between %d and %d characters, length is %d", label, min, max, l))
-	}
-}
-
-func ValidateStringNumeric(val, key, label string, ve ValidationErrors) {
-	for _, c := range val {
-		if !strings.ContainsRune("0123456789", c) {
-			ve.Add(key, fmt.Errorf("%s has to consist of numbers", label))
-			return
-		}
-	}
-}
-
-func ValidateISBN13(val, key, label string, ve ValidationErrors) {
-	if len(val) != 13 {
-		ve.Add(key, fmt.Errorf("%s has to be 13 digits", label))
-		return
-	}
-
-	sum := 0
-	for i, s := range val {
-		digit, _ := strconv.Atoi(string(s))
-		if i%2 == 0 {
-			sum += digit
-		} else {
-			sum += digit * 3
-		}
-	}
-
-	if sum%10 != 0 {
-		ve.Add(key, fmt.Errorf("%s is not a valid ISBN13 number", label))
-	}
-}
-
-func ValidateImage(val io.Reader, key, label string, ve ValidationErrors, maxw, maxh int) {
-	if val == nil {
-		return
-	}
-
-	image, _, err := image.Decode(val)
-	if err != nil {
-		ve.Add(key, fmt.Errorf("%s has an unsupported format supported formats are JPG, GIF, PNG", label))
-		return
-	}
-
-	sz := image.Bounds().Size()
-	if sz.X > maxw {
-		ve.Add(key, fmt.Errorf("%s width should be less than %d px, uploaded image width %d px", label, maxw, sz.X))
-	}
-	if sz.Y > maxh {
-		ve.Add(key, fmt.Errorf("%s height should be less than %d px, uploaded image height %d px", label, maxh, sz.Y))
-	}
-}
-
-func ValidateInt32Min(val int32, key, label string, ve ValidationErrors, min int32) {
-	if val < min {
-		ve.Add(key, fmt.Errorf("%s shouldn't be less than %d", label, min))
 	}
 }
