@@ -16,6 +16,9 @@ It started when I was [converiting a ruby service to go](https://www.emadelsaid.
 - Logging requests to STDOUT + response time
 - Method override with `_method` param.
 - Sqlc setup for converting queries to go
+- Docker and docker compose setups
+- Deployment script
+- Backup script
 
 ## Usage
 
