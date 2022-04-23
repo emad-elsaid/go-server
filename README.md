@@ -24,12 +24,20 @@ It started when I was [converiting a ruby service to go](https://www.emadelsaid.
 
 - This is meant to be cloned
 - Copy `.env.sample` to `.env` and edit the values and make sure it's loaded to your environment
-- Generate database code with [Sqlc](main) `bin/db setup`
 - Edit the `common.go` constants.
+- Generate database code with [Sqlc](main) `bin/db setup`
 - Run `bin/css` to download and compile css and icons
 - Use `router` gorilla router or `GET`, `POST` shorthand functions...etc.
-- Edit variable in `db/deploy`
-- Edit `docker-compose.yml` file to change volumes paths
+
+## Assets
+
+`bin/css` is a shell script that will download bulma.io and fontawesome and compile them into one css file written under `public/style.css` and will copy fontawesome fonts to `public/fonts`.
+
+`public` directory is served if there is no matching route for the request.
+
+everytime you change `bin/css` or any css file that it imports you'll need to run it again to generate the new `style.css` file.
+
+the layout include the `style.css` file and will compute the `sha` hash and include it as part of the url to force cache flushing when the file changes.
 
 ## Running
 
@@ -40,12 +48,30 @@ go generate // in case you changed db/query.sql
 go run *.go
 ```
 
-## Scripts
+## Deployment
 
-- Deployment: a shell script in `db/deploy` can be used to deploy to your server. it needs `docker-compose`
-- Backup: a shell script in `db/backup` will run as a service on server to backup the database everyday
-- css compiler: a script in `db/css` will download bulma.io and fontawesome icons and compile them in one css file `public/style.css`
-- database operations: `bin/db` can be used to do database operations like migrating up/down, create, setup, seed. read it for more details
+a Dockerfile is included and `docker-compose.yml` to run a database, server and backup script containers.
+
+- Edit variables in `db/deploy`
+- Edit `docker-compose.yml` file to change volumes paths
+- run `bin/deploy master user@server` to deploy master branch to server with ssh
+
+## Backups
+
+a shell script in `bin/backup` will run as a service on server to backup the database everyday.
+
+## Database
+
+SQLX package is used and PQ package to connect to postgres database. the database URL is read from the environment.
+
+`bin/db` is a shell script that include basic commands needed to manage database migrations. similar to `rails db` tasks. (create, seed, setup, migrate, rollback, dump schema, load schema, create_migration, drop database, reset). a small ~150 LOC.
+
+If you don't need the database then remove:
+
+- `db` directory
+- `bin/db` file
+- `go generate` line from `common.go`
+- remove `sqlx` code from `common.go`
 
 ## Guidelines
 
@@ -54,12 +80,3 @@ go run *.go
 - Reduce code to the minimum
 - All code is in main package no subpackages
 - Should provide main features we're used to like db connection, migrations, logging. monitoring...etc
-
-## Database
-
-If you don't need the database then remove:
-
-- `db` directory
-- `bin/db` file
-- `go generate` line from `common.go`
-- remove `sqlx` code from `common.go`
