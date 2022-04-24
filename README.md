@@ -29,6 +29,110 @@ It started when I was [converiting a ruby service to go](https://www.emadelsaid.
 - Run `bin/css` to download and compile css and icons
 - Use `router` gorilla router or `GET`, `POST` shorthand functions...etc.
 
+## Routes
+
+`common.go` has couple functions to modify the `http.Handler` struct.
+
+The most generic one is `ROUTE` which defines a function that gets executed if all `RouteCheck`s functions are true.
+```go
+func ROUTE(route http.HandlerFunc, checks ...RouteCheck)
+```
+`RouteCheck` function is a function that takes the request and returns true if the request should be executed with that handler function.
+
+`GET`, `POST`, `DELETE` functions defined a route to a handler based on request path.
+
+```go
+func GET(path string, handler HandlerFunc, middlewares ...func(http.HandlerFunc) http.HandlerFunc)
+func POST(path string, handler HandlerFunc, middlewares ...func(http.HandlerFunc) http.HandlerFunc)
+func DELETE(path string, handler HandlerFunc, middlewares ...func(http.HandlerFunc) http.HandlerFunc)
+```
+
+for example, this will match only the GET requests to `/` path and execute the function.
+
+```go
+GET("/", func(w Response, r Request) Output {
+    return Render("layout", "index", Locals{})
+})
+```
+
+You can also pass middleware functions as the last parameter to execute them in order before the handler function.
+
+
+## Handler functions
+
+The code started by a simple `net/http.HandlerFunc` but this interface doesn't have a return type. so to redirect and return for example that costs you two lines. to have more compact handler functions I created another interface
+
+```go
+type HandlerFunc func(http.ResponseWriter, *http.Request) http.HandlerFunc
+```
+
+Which then can be converted to `net/http.HandlerFunc` itself using `handlerFuncToHttpHandler` function.
+
+Also `http.ResponseWriter` and `*http.Request` are aliased to `Response` and `Request` so your function should look like so
+
+
+```go
+func Users(w Response, r Request) Output {
+  return Render("layout", "index", Locals{})
+}
+```
+
+returned function `Output` is an alias to `http.HandlerFunc` and there are couple functions that can be used as return response like `Redirect, Render, NotFound, BadRequest, Unauthorized, InternalServerError` `Redirect` function for example is defined as follows
+
+
+```go
+func Redirect(url string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, url, http.StatusFound)
+	}
+}
+```
+
+## Logging
+
+a method `Log` can be used to log execution time a colored label and a string. adding this line to a function will print something like
+
+```go
+defer Log(DEBUG, "View", name)()
+```
+
+`Log` will return a function that when executed by `defer` it knows the time it was created an the time it's executed and will print that time difference + `View` label colored with `DEBUG` color and the value of `name` at the end.
+
+```
+16:30:39  View  (40.916µs) index
+```
+
+There are two colors defined so far `DEBUG` and `INFO` these are constants that defines shell escape characters for coloring the following text.
+
+
+## Views
+
+views are `.html` files under `views` directory. they're embedded to the program with go `embed` package and parsed with `html/template` package before starting the server.
+
+Rendering the view can be done using `Render` function as the example above.
+
+
+## Helpers
+
+helper functions are passed while parsing the views files. you can use `HELPER` function to add more helpers. here is an example
+
+```go
+// helper to check if list include a string
+HELPER("include", func(list []string, str string) bool {
+    for _, i := range list {
+        if i == str {
+            return true
+        }
+    }
+
+    return false
+})
+```
+
+## Session
+
+the code depends on `gorilla/session` . `SESSION` function returns an instance of the current request session.
+
 ## Assets
 
 `bin/css` is a shell script that will download bulma.io and fontawesome and compile them into one css file written under `public/style.css` and will copy fontawesome fonts to `public/fonts`.
@@ -56,10 +160,6 @@ a Dockerfile is included and `docker-compose.yml` to run a database, server and 
 - Edit `docker-compose.yml` file to change volumes paths
 - run `bin/deploy master user@server` to deploy master branch to server with ssh
 
-## Backups
-
-a shell script in `bin/backup` will run as a service on server to backup the database everyday.
-
 ## Database
 
 SQLX package is used and PQ package to connect to postgres database. the database URL is read from the environment.
@@ -72,6 +172,10 @@ If you don't need the database then remove:
 - `bin/db` file
 - `go generate` line from `common.go`
 - remove `sqlx` code from `common.go`
+
+## Backups
+
+a shell script in `bin/backup` will run as a service on server to backup the database everyday.
 
 ## Guidelines
 
