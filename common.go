@@ -41,6 +41,8 @@ var (
 	router  = &Handler{}
 	session *sessions.CookieStore
 	CSRF    = csrf.TemplateField
+
+	dynamicSegmentRegexp = regexp.MustCompile("{([^}]*)}")
 )
 
 // Some aliases to make it shorter to write handlers
@@ -130,9 +132,10 @@ func checkMethod(method string) RouteCheck {
 	return func(r Request) (Request, bool) { return r, r.Method == method }
 }
 
+const varsIndex int = iota + 1
+
 func checkPath(path string) RouteCheck {
-	placeholder := regexp.MustCompile("{([^}]*)}")
-	path = "^" + placeholder.ReplaceAllString(path, "(?P<$1>[^/]+)") + "$"
+	path = "^" + dynamicSegmentRegexp.ReplaceAllString(path, "(?P<$1>[^/]+)") + "$"
 	reg := regexp.MustCompile(path)
 	groups := reg.SubexpNames()
 
@@ -147,13 +150,13 @@ func checkPath(path string) RouteCheck {
 			vars[g] = values[i]
 		}
 
-		ctx := context.WithValue(r.Context(), "vars", vars)
+		ctx := context.WithValue(r.Context(), varsIndex, vars)
 		return r.WithContext(ctx), true
 	}
 }
 
 func VARS(r Request) map[string]string {
-	if rv := r.Context().Value("vars"); rv != nil {
+	if rv := r.Context().Value(varsIndex); rv != nil {
 		return rv.(map[string]string)
 	}
 	return map[string]string{}
@@ -177,7 +180,7 @@ func Log(level, label, text string, args ...interface{}) func() {
 	}
 }
 
-// DATABASE CONNECTION ===================================
+// DATABASE LOGGER ===================================
 
 type queryLogger struct {
 	db *sqlx.DB
@@ -199,7 +202,7 @@ func (p queryLogger) QueryRowContext(ctx context.Context, q string, args ...inte
 	return p.db.QueryRowContext(ctx, q, args...)
 }
 
-// ROUTES HELPERS ==========================================
+// Responses functions ==========================================
 
 type HandlerFunc func(http.ResponseWriter, *http.Request) http.HandlerFunc
 
@@ -232,6 +235,8 @@ func Redirect(url string) http.HandlerFunc {
 		http.Redirect(w, r, url, http.StatusFound)
 	}
 }
+
+// ROUTES functions ==========================================
 
 func ROUTE(route http.HandlerFunc, checks ...RouteCheck) {
 	router.routes = append(router.routes, Route{
