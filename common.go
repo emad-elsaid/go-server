@@ -38,17 +38,18 @@ const (
 
 var (
 	Q       *Queries
-	router  *Handler = &Handler{}
+	router  = &Handler{}
 	session *sessions.CookieStore
-
-	CSRF = csrf.TemplateField
+	CSRF    = csrf.TemplateField
 )
 
-// Some aliases to make it easier
-type Response = http.ResponseWriter
-type Request = *http.Request
-type Output = http.HandlerFunc
-type Locals map[string]interface{} // passed to views/templates
+// Some aliases to make it shorter to write handlers
+type (
+	Response = http.ResponseWriter
+	Request  = *http.Request
+	Output   = http.HandlerFunc
+	Locals   map[string]interface{} // passed to views/templates
+)
 
 func init() {
 	log.SetFlags(log.Ltime)
@@ -69,17 +70,17 @@ func init() {
 func Start() {
 	compileViews()
 	middlewares := []func(http.Handler) http.Handler{
-		methodOverrideHandler,
+		methodOverrideMiddleware,
 		csrf.Protect(
 			[]byte(os.Getenv("SESSION_SECRET")),
 			csrf.Path("/"),
 			csrf.FieldName("csrf"),
 			csrf.CookieName(CSRF_COOKIE_NAME),
 		),
-		RequestLoggerHandler,
+		requestLoggerMiddleware,
 	}
 
-	ROUTE(staticWithoutDirectoryListingHandler())
+	ROUTE(staticDirectoryMiddleware())
 
 	var handler http.Handler = router
 	for _, v := range middlewares {
@@ -329,7 +330,7 @@ func SESSION(r *http.Request) *sessions.Session {
 	return s
 }
 
-// HANDLERS MIDDLEWARES =============================
+// MIDDLEWARES ==============================
 
 // First middleware gets executed first
 func applyMiddlewares(handler http.HandlerFunc, middlewares ...func(http.HandlerFunc) http.HandlerFunc) http.HandlerFunc {
@@ -339,9 +340,7 @@ func applyMiddlewares(handler http.HandlerFunc, middlewares ...func(http.Handler
 	return handler
 }
 
-// SERVER MIDDLEWARES ==============================
-
-func staticWithoutDirectoryListingHandler() http.HandlerFunc {
+func staticDirectoryMiddleware() http.HandlerFunc {
 	dir := http.Dir(STATIC_DIR_PATH)
 	server := http.FileServer(dir)
 	handler := http.StripPrefix("/", server)
@@ -357,7 +356,7 @@ func staticWithoutDirectoryListingHandler() http.HandlerFunc {
 }
 
 // Derived from Gorilla middleware https://github.com/gorilla/handlers/blob/v1.5.1/handlers.go#L134
-func methodOverrideHandler(h http.Handler) http.Handler {
+func methodOverrideMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" {
 			om := r.FormValue("_method")
@@ -369,7 +368,7 @@ func methodOverrideHandler(h http.Handler) http.Handler {
 	})
 }
 
-func RequestLoggerHandler(h http.Handler) http.Handler {
+func requestLoggerMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer Log(INFO, r.Method, r.URL.Path)()
 		h.ServeHTTP(w, r)
