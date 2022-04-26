@@ -37,7 +37,6 @@ services:
       - db
     links:
       - db
-    restart: always
     env_file:
       - .env
     logging:
