@@ -14,6 +14,7 @@ It started when I was [converting a ruby service to go](https://www.emadelsaid.c
 - Sinatra shorthand functions to define routes (GET, POST, DELETE)
 - Session/Cookies
 - Logging requests to STDOUT + response time
+- Logging DB queries + execution time
 - Method override with `_method` param.
 - Sqlc setup for converting queries to go
 - Docker and docker compose setups
