@@ -20,6 +20,16 @@ It started when I was [converting a ruby service to go](https://www.emadelsaid.c
 - Deployment script
 - Backup script
 
+## Dependencies
+
+- Go
+- Postgresql
+- [SQLc](https://sqlc.dev/)
+- Docker, Docker-compose (if you want to deploy with docker)
+- [Sass](https://sass-lang.com/install)
+- wget
+- unzip
+
 ## Usage
 
 - This is meant to be cloned
