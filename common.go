@@ -96,8 +96,8 @@ func Start() {
 		ReadTimeout:  15 * time.Second,
 	}
 
-	log.Printf("Starting server: %s", BIND_ADDRESS)
-	log.Fatal(srv.ListenAndServe())
+	Log(INFO, "Server", "Listening to", BIND_ADDRESS)
+	Log(INFO, "Server", "Closing", srv.ListenAndServe())
 }
 
 // Mux/Handler ===========================================
@@ -169,7 +169,15 @@ const (
 	INFO  = "\033[97;43m"
 )
 
-func Log(level, label, text string, args ...interface{}) func() {
+func Log(level, label, text string, args ...interface{}) {
+	if len(args) > 0 {
+		log.Printf("%s %s \033[0m %s %v", level, label, text, args)
+	} else {
+		log.Printf("%s %s \033[0m %s", level, label, text)
+	}
+}
+
+func LogDuration(level, label, text string, args ...interface{}) func() {
 	start := time.Now()
 	return func() {
 		if len(args) > 0 {
@@ -187,18 +195,18 @@ type queryLogger struct {
 }
 
 func (p queryLogger) ExecContext(ctx context.Context, q string, args ...interface{}) (sql.Result, error) {
-	defer Log(DEBUG, "DB Exec", q, args)()
+	defer LogDuration(DEBUG, "DB Exec", q, args)()
 	return p.db.ExecContext(ctx, q, args...)
 }
 func (p queryLogger) PrepareContext(ctx context.Context, q string) (*sql.Stmt, error) {
 	return p.db.PrepareContext(ctx, q)
 }
 func (p queryLogger) QueryContext(ctx context.Context, q string, args ...interface{}) (*sql.Rows, error) {
-	defer Log(DEBUG, "DB Query", q, args)()
+	defer LogDuration(DEBUG, "DB Query", q, args)()
 	return p.db.QueryContext(ctx, q, args...)
 }
 func (p queryLogger) QueryRowContext(ctx context.Context, q string, args ...interface{}) *sql.Row {
-	defer Log(DEBUG, "DB Row", q, args)()
+	defer LogDuration(DEBUG, "DB Row", q, args)()
 	return p.db.QueryRowContext(ctx, q, args...)
 }
 
@@ -283,7 +291,7 @@ func compileViews() {
 		if strings.HasSuffix(path, VIEWS_EXTENSION) && d.Type().IsRegular() {
 			name := strings.TrimPrefix(path, "views/")
 			name = strings.TrimSuffix(name, VIEWS_EXTENSION)
-			defer Log(DEBUG, "View", name)()
+			defer LogDuration(DEBUG, "View", name)()
 
 			c, err := fs.ReadFile(views, path)
 			if err != nil {
@@ -375,7 +383,7 @@ func methodOverrideMiddleware(h http.Handler) http.Handler {
 
 func requestLoggerMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer Log(INFO, r.Method, r.URL.Path)()
+		defer LogDuration(INFO, r.Method, r.URL.Path)()
 		h.ServeHTTP(w, r)
 	})
 }

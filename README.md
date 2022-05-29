@@ -101,13 +101,19 @@ func Redirect(url string) http.HandlerFunc {
 
 ## Logging
 
-a method `Log` can be used to log execution time a colored label and a string. adding this line to a function will print something like
-
+Method `Log` can be used to log a line with label.
 ```go
-defer Log(DEBUG, "View", name)()
+Log(DEBUG, "View", name)
 ```
 
-`Log` will return a function that when executed by `defer` it knows the time it was created an the time it's executed and will print that time difference + `View` label colored with `DEBUG` color and the value of `name` at the end.
+
+Method `LogDuration` can be used to log execution time a colored label and a string. adding this line to a function will print something like
+
+```go
+defer LogDuration(DEBUG, "View", name)()
+```
+
+`LogDuration` will return a function that when executed by `defer` it knows the time it was created an the time it's executed and will print that time difference + `View` label colored with `DEBUG` color and the value of `name` at the end.
 
 ```
 16:30:39  View  (40.916µs) index
