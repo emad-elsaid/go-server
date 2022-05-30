@@ -39,10 +39,20 @@ const (
 var (
 	Q       *Queries
 	router  = &Handler{}
-	session *sessions.CookieStore
+	session = sessions.NewCookieStore([]byte(os.Getenv("SESSION_SECRET")))
 	CSRF    = csrf.TemplateField
 
 	dynamicSegmentRegexp = regexp.MustCompile("{([^}]*)}")
+	middlewares          = []func(http.Handler) http.Handler{
+		methodOverrideMiddleware,
+		csrf.Protect(
+			[]byte(os.Getenv("SESSION_SECRET")),
+			csrf.Path("/"),
+			csrf.FieldName("csrf"),
+			csrf.CookieName(CSRF_COOKIE_NAME),
+		),
+		requestLoggerMiddleware,
+	}
 )
 
 // Some aliases to make it shorter to write handlers
@@ -65,23 +75,11 @@ func init() {
 	db.SetMaxIdleConns(MAX_DB_IDLE_CONNECTIONS)
 
 	Q = New(queryLogger{db})
-	session = sessions.NewCookieStore([]byte(os.Getenv("SESSION_SECRET")))
 	session.Options.HttpOnly = true
 }
 
 func Start() {
 	compileViews()
-	middlewares := []func(http.Handler) http.Handler{
-		methodOverrideMiddleware,
-		csrf.Protect(
-			[]byte(os.Getenv("SESSION_SECRET")),
-			csrf.Path("/"),
-			csrf.FieldName("csrf"),
-			csrf.CookieName(CSRF_COOKIE_NAME),
-		),
-		requestLoggerMiddleware,
-	}
-
 	ROUTE(staticDirectoryMiddleware())
 
 	var handler http.Handler = router
@@ -101,16 +99,17 @@ func Start() {
 }
 
 // Mux/Handler ===========================================
-type RouteCheck func(Request) (Request, bool)
+type (
+	RouteCheck func(Request) (Request, bool)
+	Route      struct {
+		checks []RouteCheck
+		route  http.HandlerFunc
+	}
 
-type Route struct {
-	checks []RouteCheck
-	route  http.HandlerFunc
-}
-
-type Handler struct {
-	routes []Route
-}
+	Handler struct {
+		routes []Route
+	}
+)
 
 func (h *Handler) ServeHTTP(w Response, r Request) {
 ROUTES:
