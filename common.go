@@ -78,7 +78,7 @@ func init() {
 	session.Options.HttpOnly = true
 }
 
-func Start() {
+func START() {
 	compileViews()
 	ROUTE(staticDirectoryMiddleware())
 
