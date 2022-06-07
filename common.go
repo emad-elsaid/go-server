@@ -42,7 +42,7 @@ var (
 	session = sessions.NewCookieStore([]byte(os.Getenv("SESSION_SECRET")))
 	CSRF    = csrf.TemplateField
 
-	dynamicSegmentRegexp = regexp.MustCompile("{([^}]*)}")
+	dynamicSegmentRegexp = regexp.MustCompile("{([^}]+)}")
 	middlewares          = []func(http.Handler) http.Handler{
 		methodOverrideMiddleware,
 		csrf.Protect(
