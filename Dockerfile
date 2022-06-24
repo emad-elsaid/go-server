@@ -8,5 +8,5 @@ WORKDIR $app
 ADD . $app
 RUN go build -o main
 #Remove all unnecessary files
-RUN rm -rf *go *.mod *.sum bin
+RUN rm  *go *.mod *.sum 
 CMD ./main
