@@ -6,7 +6,7 @@ ENV app /app
 RUN mkdir -p $app
 WORKDIR $app
 ADD . $app
-RUN go build -o
+RUN go build -o main
 # Runtime stage 
 FROM golang:1.17.7-bullseye
 ENV app /app
