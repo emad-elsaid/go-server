@@ -1,14 +1,14 @@
 version: '2'
 services:
   db:
-    image: "postgres:13.3"
+    image: "postgres:16.3"
     restart: always
     env_file:
       - .env
     expose:
       - '5432'
     volumes:
-      - /root/data/go-server/db_13_3:/var/lib/postgresql/data
+      - /root/data/projectname/db:/var/lib/postgresql/data
     shm_size: '2gb'
     logging:
       driver: journald
@@ -32,7 +32,7 @@ services:
     command: bin/backup
     restart: always
     volumes:
-      - /root/data/library/backups:/backups
+      - /root/data/projectname/backups:/backups
     depends_on:
       - db
     links:

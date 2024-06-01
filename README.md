@@ -34,7 +34,7 @@ It started when I was [converting a ruby service to go](https://www.emadelsaid.c
 ## Usage
 
 - This is meant to be cloned
-- Copy `.env.sample` to `.env` and edit the values and make sure it's loaded to your environment
+- Edit `.env` values and make sure it's loaded to your environment
 - Edit the `common.go` constants.
 - Generate database code with [Sqlc](main) `bin/db setup`
 - Run `bin/css` to download and compile css and icons
