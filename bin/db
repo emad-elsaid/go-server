@@ -32,7 +32,7 @@ seed() {
 load() {
     echo "Loading schema..."
     psql -v ON_ERROR_STOP=1 --no-psqlrc --quiet $DATABASE_URL \
-         < db/structure.sql
+         < db/schema.sql
 }
 
 up() {
@@ -61,10 +61,10 @@ dump() {
     echo "Dumping database schema..."
     # dump schema of all tables
     pg_dump --format=plain --schema-only --no-owner $DATABASE_URL \
-            > db/structure.sql
+            > db/schema.sql
     # dump schema_migrations table
     pg_dump --format=plain --inserts --data-only -t schema_migrations $DATABASE_URL \
-            >> db/structure.sql
+            >> db/schema.sql
 }
 
 create_migration() {

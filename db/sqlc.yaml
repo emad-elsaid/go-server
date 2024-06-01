@@ -1,7 +1,10 @@
-version: 1
-packages:
-  - path: ".."
-    name: "main"
-    engine: "postgresql"
-    schema: "structure.sql"
+version: 2
+sql:
+  - engine: "postgresql"
     queries: "query.sql"
+    schema: "schema.sql"
+    gen:
+      go:
+        out: ".."
+        package: "main"
+        sql_package: "pgx/v5"
