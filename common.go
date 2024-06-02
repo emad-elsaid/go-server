@@ -83,8 +83,6 @@ func init() {
 		}),
 	))
 
-	log.SetFlags(log.Ltime)
-
 	db, err := pgxpool.New(context.Background(), os.Getenv("DATABASE_URL"))
 	if err != nil {
 		log.Fatal(err)
