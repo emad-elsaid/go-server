@@ -4,15 +4,16 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"database/sql"
 	"embed"
 	"fmt"
 	"html/template"
 	"io/fs"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -38,22 +39,32 @@ const (
 
 var (
 	Q       *Queries
-	router  = &Handler{}
+	router  = http.NewServeMux()
 	session = sessions.NewCookieStore([]byte(os.Getenv("SESSION_SECRET")))
 	CSRF    = csrf.TemplateField
+)
 
-	dynamicSegmentRegexp = regexp.MustCompile("{([^}]+)}")
-	middlewares          = []func(http.Handler) http.Handler{
+func defaultMiddlewares() []func(http.Handler) http.Handler {
+	crsfOpts := []csrf.Option{
+		csrf.Path("/"),
+		csrf.FieldName("csrf"),
+		csrf.CookieName(CSRF_COOKIE_NAME),
+	}
+
+	sessionSecret := []byte(os.Getenv("SESSION_SECRET"))
+	if len(sessionSecret) == 0 {
+		sessionSecret = make([]byte, 128)
+		rand.Read(sessionSecret)
+	}
+
+	middlewares := []func(http.Handler) http.Handler{
 		methodOverrideMiddleware,
-		csrf.Protect(
-			[]byte(os.Getenv("SESSION_SECRET")),
-			csrf.Path("/"),
-			csrf.FieldName("csrf"),
-			csrf.CookieName(CSRF_COOKIE_NAME),
-		),
+		csrf.Protect(sessionSecret, crsfOpts...),
 		requestLoggerMiddleware,
 	}
-)
+
+	return middlewares
+}
 
 // Some aliases to make it shorter to write handlers
 type (
@@ -77,10 +88,10 @@ func init() {
 
 func START() {
 	compileViews()
-	ROUTE(staticDirectoryMiddleware())
+	router.HandleFunc("GET /"+STATIC_DIR_PATH+"/", staticDirectoryMiddleware())
 
 	var handler http.Handler = router
-	for _, v := range middlewares {
+	for _, v := range defaultMiddlewares() {
 		handler = v(handler)
 	}
 
@@ -91,95 +102,24 @@ func START() {
 		ReadTimeout:  15 * time.Second,
 	}
 
-	Log(INFO, "Server", "Listening to", BIND_ADDRESS)
-	Log(INFO, "Server", "Closing", srv.ListenAndServe())
-}
-
-// Mux/Handler ===========================================
-type (
-	RouteCheck func(Request) (Request, bool)
-	Route      struct {
-		checks []RouteCheck
-		route  http.HandlerFunc
-	}
-
-	Handler struct {
-		routes []Route
-	}
-)
-
-func (h *Handler) ServeHTTP(w Response, r Request) {
-ROUTES:
-	for _, route := range h.routes {
-		rn := r
-		ok := false
-		for _, check := range route.checks {
-			if rn, ok = check(rn); !ok {
-				continue ROUTES
-			}
-		}
-
-		route.route(w, rn)
-		return
-	}
-}
-
-func checkMethod(method string) RouteCheck {
-	return func(r Request) (Request, bool) { return r, r.Method == method }
-}
-
-const varsIndex int = iota + 1
-
-func checkPath(path string) RouteCheck {
-	path = "^" + dynamicSegmentRegexp.ReplaceAllString(path, "(?P<$1>[^/]+)") + "$"
-	reg := regexp.MustCompile(path)
-	groups := reg.SubexpNames()
-
-	return func(r Request) (Request, bool) {
-		if !reg.MatchString(r.URL.Path) {
-			return r, false
-		}
-
-		values := reg.FindStringSubmatch(r.URL.Path)
-		vars := map[string]string{}
-		for i, g := range groups {
-			vars[g] = values[i]
-		}
-
-		ctx := context.WithValue(r.Context(), varsIndex, vars)
-		return r.WithContext(ctx), true
-	}
-}
-
-func VARS(r Request) map[string]string {
-	if rv := r.Context().Value(varsIndex); rv != nil {
-		return rv.(map[string]string)
-	}
-	return map[string]string{}
+	slog.Info("Server listening", "address", BIND_ADDRESS)
+	slog.Info("Server closing", "error", srv.ListenAndServe())
 }
 
 // LOGGING ===============================================
 
 const (
-	DEBUG = "\033[97;42m"
-	INFO  = "\033[97;43m"
+	DEBUG = "\033[97;41m"
+	INFO  = "\033[97;44m"
 )
-
-func Log(level, label, text string, args ...interface{}) {
-	if len(args) > 0 {
-		log.Printf("%s %s \033[0m %s %v", level, label, text, args)
-	} else {
-		log.Printf("%s %s \033[0m %s", level, label, text)
-	}
-}
 
 func LogDuration(level, label, text string, args ...interface{}) func() {
 	start := time.Now()
 	return func() {
 		if len(args) > 0 {
-			log.Printf("%s %s \033[0m (%s) %s %v", level, label, time.Now().Sub(start), text, args)
+			log.Printf("%s %-6s \033[0m (%s) %s %v", level, label, time.Now().Sub(start), text, args)
 		} else {
-			log.Printf("%s %s \033[0m (%s) %s", level, label, time.Now().Sub(start), text)
+			log.Printf("%s %-6s \033[0m (%s) %s", level, label, time.Now().Sub(start), text)
 		}
 	}
 }
@@ -241,31 +181,21 @@ func Redirect(url string) http.HandlerFunc {
 
 // ROUTES functions ==========================================
 
-func ROUTE(route http.HandlerFunc, checks ...RouteCheck) {
-	router.routes = append(router.routes, Route{
-		checks: checks,
-		route:  route,
-	})
-}
-
 func GET(path string, handler HandlerFunc, middlewares ...func(http.HandlerFunc) http.HandlerFunc) {
-	ROUTE(
+	router.HandleFunc("GET "+path,
 		applyMiddlewares(handlerFuncToHttpHandler(handler), middlewares...),
-		checkMethod(http.MethodGet), checkPath(path),
 	)
 }
 
 func POST(path string, handler HandlerFunc, middlewares ...func(http.HandlerFunc) http.HandlerFunc) {
-	ROUTE(
+	router.HandleFunc("POST "+path,
 		applyMiddlewares(handlerFuncToHttpHandler(handler), middlewares...),
-		checkMethod(http.MethodPost), checkPath(path),
 	)
 }
 
 func DELETE(path string, handler HandlerFunc, middlewares ...func(http.HandlerFunc) http.HandlerFunc) {
-	ROUTE(
+	router.HandleFunc("DELETE "+path,
 		applyMiddlewares(handlerFuncToHttpHandler(handler), middlewares...),
-		checkMethod(http.MethodDelete), checkPath(path),
 	)
 }
 
@@ -351,7 +281,7 @@ func applyMiddlewares(handler http.HandlerFunc, middlewares ...func(http.Handler
 func staticDirectoryMiddleware() http.HandlerFunc {
 	dir := http.Dir(STATIC_DIR_PATH)
 	server := http.FileServer(dir)
-	handler := http.StripPrefix("/", server)
+	handler := http.StripPrefix("/"+STATIC_DIR_PATH, server)
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasSuffix(r.URL.Path, "/") {
