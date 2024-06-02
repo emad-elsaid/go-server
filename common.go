@@ -21,19 +21,19 @@ import (
 
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/sessions"
-	"github.com/jmoiron/sqlx"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/lib/pq"
 )
 
 const (
-	APP_NAME                = "go-server"
-	MAX_DB_OPEN_CONNECTIONS = 5
-	MAX_DB_IDLE_CONNECTIONS = 5
-	STATIC_DIR_PATH         = "public"
-	BIND_ADDRESS            = "0.0.0.0:3000"
-	VIEWS_EXTENSION         = ".html"
-	SESSION_COOKIE_NAME     = APP_NAME + "_session"
-	CSRF_COOKIE_NAME        = APP_NAME + "_csrf"
+	APP_NAME            = "go-server"
+	STATIC_DIR_PATH     = "public"
+	BIND_ADDRESS        = "0.0.0.0:3000"
+	VIEWS_EXTENSION     = ".html"
+	SESSION_COOKIE_NAME = APP_NAME + "_session"
+	CSRF_COOKIE_NAME    = APP_NAME + "_csrf"
 )
 
 var (
@@ -66,13 +66,10 @@ type (
 func init() {
 	log.SetFlags(log.Ltime)
 
-	db, err := sqlx.Connect("postgres", os.Getenv("DATABASE_URL"))
+	db, err := pgxpool.New(context.Background(), os.Getenv("DATABASE_URL"))
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	db.SetMaxOpenConns(MAX_DB_OPEN_CONNECTIONS)
-	db.SetMaxIdleConns(MAX_DB_IDLE_CONNECTIONS)
 
 	Q = New(queryLogger{db})
 	session.Options.HttpOnly = true
@@ -190,23 +187,22 @@ func LogDuration(level, label, text string, args ...interface{}) func() {
 // DATABASE LOGGER ===================================
 
 type queryLogger struct {
-	db *sqlx.DB
+	db *pgxpool.Pool
 }
 
-func (p queryLogger) ExecContext(ctx context.Context, q string, args ...interface{}) (sql.Result, error) {
+func (p queryLogger) Exec(ctx context.Context, q string, args ...interface{}) (pgconn.CommandTag, error) {
 	defer LogDuration(DEBUG, "DB Exec", q, args)()
-	return p.db.ExecContext(ctx, q, args...)
+	return p.db.Exec(ctx, q, args...)
 }
-func (p queryLogger) PrepareContext(ctx context.Context, q string) (*sql.Stmt, error) {
-	return p.db.PrepareContext(ctx, q)
-}
-func (p queryLogger) QueryContext(ctx context.Context, q string, args ...interface{}) (*sql.Rows, error) {
+
+func (p queryLogger) Query(ctx context.Context, q string, args ...interface{}) (pgx.Rows, error) {
 	defer LogDuration(DEBUG, "DB Query", q, args)()
-	return p.db.QueryContext(ctx, q, args...)
+	return p.db.Query(ctx, q, args...)
 }
-func (p queryLogger) QueryRowContext(ctx context.Context, q string, args ...interface{}) *sql.Row {
+
+func (p queryLogger) QueryRow(ctx context.Context, q string, args ...interface{}) pgx.Row {
 	defer LogDuration(DEBUG, "DB Row", q, args)()
-	return p.db.QueryRowContext(ctx, q, args...)
+	return p.db.QueryRow(ctx, q, args...)
 }
 
 // Responses functions ==========================================
