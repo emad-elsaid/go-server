@@ -26,6 +26,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/lib/pq"
+	"github.com/lmittmann/tint"
 )
 
 const (
@@ -75,6 +76,13 @@ type (
 )
 
 func init() {
+	slog.SetDefault(slog.New(
+		tint.NewHandler(os.Stdout, &tint.Options{
+			Level:      slog.LevelDebug,
+			TimeFormat: time.Kitchen,
+		}),
+	))
+
 	log.SetFlags(log.Ltime)
 
 	db, err := pgxpool.New(context.Background(), os.Getenv("DATABASE_URL"))
@@ -108,19 +116,14 @@ func START() {
 
 // LOGGING ===============================================
 
-const (
-	DEBUG = "\033[97;41m"
-	INFO  = "\033[97;44m"
-)
-
-func LogDuration(level, label, text string, args ...interface{}) func() {
+func LogDuration(msg string, args ...interface{}) func() {
 	start := time.Now()
+
 	return func() {
-		if len(args) > 0 {
-			log.Printf("%s %-6s \033[0m (%s) %s %v", level, label, time.Now().Sub(start), text, args)
-		} else {
-			log.Printf("%s %-6s \033[0m (%s) %s", level, label, time.Now().Sub(start), text)
-		}
+		slog.
+			With("duration", time.Now().Sub(start)).
+			With(args...).
+			Debug(msg)
 	}
 }
 
@@ -131,17 +134,17 @@ type queryLogger struct {
 }
 
 func (p queryLogger) Exec(ctx context.Context, q string, args ...interface{}) (pgconn.CommandTag, error) {
-	defer LogDuration(DEBUG, "DB Exec", q, args)()
+	defer LogDuration("DB Exec", "query", q, "args", args)()
 	return p.db.Exec(ctx, q, args...)
 }
 
 func (p queryLogger) Query(ctx context.Context, q string, args ...interface{}) (pgx.Rows, error) {
-	defer LogDuration(DEBUG, "DB Query", q, args)()
+	defer LogDuration("DB Query", "query", q, "args", args)()
 	return p.db.Query(ctx, q, args...)
 }
 
 func (p queryLogger) QueryRow(ctx context.Context, q string, args ...interface{}) pgx.Row {
-	defer LogDuration(DEBUG, "DB Row", q, args)()
+	defer LogDuration("DB Row", "query", q, "args", args)()
 	return p.db.QueryRow(ctx, q, args...)
 }
 
@@ -216,7 +219,7 @@ func compileViews() {
 		if strings.HasSuffix(path, VIEWS_EXTENSION) && d.Type().IsRegular() {
 			name := strings.TrimPrefix(path, "views/")
 			name = strings.TrimSuffix(name, VIEWS_EXTENSION)
-			defer LogDuration(DEBUG, "View", name)()
+			defer LogDuration("View", "name", name)()
 
 			c, err := fs.ReadFile(views, path)
 			if err != nil {
@@ -308,7 +311,7 @@ func methodOverrideMiddleware(h http.Handler) http.Handler {
 
 func requestLoggerMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer LogDuration(INFO, r.Method, r.URL.Path)()
+		defer LogDuration(r.URL.Path, "method", r.Method)()
 		h.ServeHTTP(w, r)
 	})
 }
