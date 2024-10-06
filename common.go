@@ -150,11 +150,11 @@ func (p queryLogger) QueryRow(ctx context.Context, q string, args ...interface{}
 
 // Responses functions ==========================================
 
-type HandlerFunc func(http.ResponseWriter, *http.Request) http.HandlerFunc
+type HandlerFunc func(*http.Request) Output
 
 func handlerFuncToHttpHandler(handler HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		handler(w, r)(w, r)
+		handler(r)(w, r)
 	}
 }
 
