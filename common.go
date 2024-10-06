@@ -5,10 +5,12 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"database/sql"
 	"embed"
 	"fmt"
 	"html/template"
+	"io"
 	"io/fs"
 	"log"
 	"log/slog"
@@ -92,7 +94,7 @@ func init() {
 	session.Options.HttpOnly = true
 }
 
-func START() {
+func Start() {
 	compileViews()
 	router.HandleFunc("GET /"+STATIC_DIR_PATH+"/", staticDirectoryMiddleware())
 
@@ -182,19 +184,19 @@ func Redirect(url string) http.HandlerFunc {
 
 // ROUTES functions ==========================================
 
-func GET(path string, handler HandlerFunc, middlewares ...func(http.HandlerFunc) http.HandlerFunc) {
+func Get(path string, handler HandlerFunc, middlewares ...func(http.HandlerFunc) http.HandlerFunc) {
 	router.HandleFunc("GET "+path,
 		applyMiddlewares(handlerFuncToHttpHandler(handler), middlewares...),
 	)
 }
 
-func POST(path string, handler HandlerFunc, middlewares ...func(http.HandlerFunc) http.HandlerFunc) {
+func Post(path string, handler HandlerFunc, middlewares ...func(http.HandlerFunc) http.HandlerFunc) {
 	router.HandleFunc("POST "+path,
 		applyMiddlewares(handlerFuncToHttpHandler(handler), middlewares...),
 	)
 }
 
-func DELETE(path string, handler HandlerFunc, middlewares ...func(http.HandlerFunc) http.HandlerFunc) {
+func Delete(path string, handler HandlerFunc, middlewares ...func(http.HandlerFunc) http.HandlerFunc) {
 	router.HandleFunc("DELETE "+path,
 		applyMiddlewares(handlerFuncToHttpHandler(handler), middlewares...),
 	)
@@ -205,7 +207,6 @@ func DELETE(path string, handler HandlerFunc, middlewares ...func(http.HandlerFu
 //go:embed views
 var views embed.FS
 var templates *template.Template
-var helpers = template.FuncMap{}
 
 func compileViews() {
 	templates = template.New("")
@@ -254,7 +255,13 @@ func Render(path string, view string, data Locals) http.HandlerFunc {
 	}
 }
 
-func HELPER(name string, f interface{}) {
+// HELPERS ===================================
+var helpers = template.FuncMap{
+	"partial": partialHelper,
+	"sha256":  sha256Helper(),
+}
+
+func Helper(name string, f interface{}) {
 	if _, ok := helpers[name]; ok {
 		log.Fatalf("Helper: %s has been defined already", name)
 	}
@@ -262,9 +269,35 @@ func HELPER(name string, f interface{}) {
 	helpers[name] = f
 }
 
+func partialHelper(path string, data interface{}) (template.HTML, error) {
+	return template.HTML(partial(path, data)), nil
+}
+
+func sha256Helper() interface{} {
+	cache := map[string]string{}
+	return func(p string) (string, error) {
+		if v, ok := cache[p]; ok {
+			return v, nil
+		}
+
+		f, err := os.Open(p)
+		if err != nil {
+			return "", err
+		}
+
+		d, err := io.ReadAll(f)
+		if err != nil {
+			return "", err
+		}
+
+		cache[p] = fmt.Sprintf("%x", sha256.Sum256(d))
+		return cache[p], nil
+	}
+}
+
 // SESSION =================================
 
-func SESSION(r *http.Request) *sessions.Session {
+func Session(r *http.Request) *sessions.Session {
 	s, _ := session.Get(r, SESSION_COOKIE_NAME)
 	return s
 }
