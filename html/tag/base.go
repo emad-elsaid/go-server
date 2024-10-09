@@ -18,17 +18,17 @@ func Tag(name string, cs ...fmt.Stringer) Element {
 	b.WriteString("<" + name)
 
 	for i := range cs {
-		if a, ok := cs[i].(attr.Attribute); ok {
+		if _, ok := cs[i].(attr.Attribute); ok {
 			b.WriteRune(' ')
-			b.WriteString(a.String())
+			b.WriteString(cs[i].String())
 		}
 	}
 
 	b.WriteRune('>')
 
 	for i := range cs {
-		if c, ok := cs[i].(Element); ok {
-			b.WriteString(c.String())
+		if _, ok := cs[i].(Element); ok {
+			b.WriteString(cs[i].String())
 		}
 	}
 
