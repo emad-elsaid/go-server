@@ -18,7 +18,7 @@ func main() {
 }
 
 func Layout(view t.Element) t.Element {
-	return t.HTML(
+	return t.Html(
 		a.Lang("en"),
 		t.Head(
 			t.Meta(a.Charset("utf-8")),

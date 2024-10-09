@@ -37,8 +37,4 @@ func Tag(name string, cs ...fmt.Stringer) Element {
 	return Element(b.String())
 }
 
-func HTML(c ...fmt.Stringer) Element { return Tag("html", c...) }
-
-func String(s string) Element {
-	return Element(html.EscapeString(s))
-}
+func String(s string) Element { return Element(html.EscapeString(s)) }
