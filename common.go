@@ -2,16 +2,12 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"database/sql"
-	"embed"
 	"fmt"
-	"html/template"
 	"io"
-	"io/fs"
 	"log"
 	"log/slog"
 	"net/http"
@@ -19,8 +15,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	_ "embed"
 
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/sessions"
@@ -95,7 +89,6 @@ func init() {
 }
 
 func Start() {
-	compileViews()
 	router.HandleFunc("GET /"+STATIC_DIR_PATH+"/", staticDirectoryMiddleware())
 
 	var handler http.Handler = router
@@ -208,97 +201,26 @@ func Delete(path string, handler HandlerFunc, middlewares ...func(http.HandlerFu
 	)
 }
 
-// VIEWS ====================
-
-//go:embed views
-var views embed.FS
-var templates *template.Template
-
-func compileViews() {
-	templates = template.New("")
-	fs.WalkDir(views, ".", func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if strings.HasSuffix(path, VIEWS_EXTENSION) && d.Type().IsRegular() {
-			name := strings.TrimPrefix(path, "views/")
-			name = strings.TrimSuffix(name, VIEWS_EXTENSION)
-			defer LogDuration("View", "name", name)()
-
-			c, err := fs.ReadFile(views, path)
-			if err != nil {
-				return err
-			}
-
-			template.Must(templates.New(name).Funcs(helpers).Parse(string(c)))
-		}
-
-		return nil
-	})
-}
-
-func partial(path string, data interface{}) string {
-	v := templates.Lookup(path)
-	if v == nil {
-		return fmt.Sprintf("view %s not found", path)
-	}
-
-	w := bytes.NewBufferString("")
-	err := v.Execute(w, data)
-	if err != nil {
-		return "rendering error " + path + " " + err.Error()
-	}
-
-	return w.String()
-}
-
-func Render(path string, view string, data Locals) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		data["view"] = view
-		data["request"] = r
-		fmt.Fprint(w, partial(path, data))
-	}
-}
-
 // HELPERS ===================================
-var helpers = template.FuncMap{
-	"partial": partialHelper,
-	"sha256":  sha256Helper(),
-}
+var sha256cache = map[string]string{}
 
-func Helper(name string, f interface{}) {
-	if _, ok := helpers[name]; ok {
-		log.Fatalf("Helper: %s has been defined already", name)
+func Sha256(p string) string {
+	if v, ok := sha256cache[p]; ok {
+		return v
 	}
 
-	helpers[name] = f
-}
-
-func partialHelper(path string, data interface{}) (template.HTML, error) {
-	return template.HTML(partial(path, data)), nil
-}
-
-func sha256Helper() interface{} {
-	cache := map[string]string{}
-	return func(p string) (string, error) {
-		if v, ok := cache[p]; ok {
-			return v, nil
-		}
-
-		f, err := os.Open(p)
-		if err != nil {
-			return "", err
-		}
-
-		d, err := io.ReadAll(f)
-		if err != nil {
-			return "", err
-		}
-
-		cache[p] = fmt.Sprintf("%x", sha256.Sum256(d))
-		return cache[p], nil
+	f, err := os.Open(p)
+	if err != nil {
+		return err.Error()
 	}
+
+	d, err := io.ReadAll(f)
+	if err != nil {
+		return err.Error()
+	}
+
+	sha256cache[p] = fmt.Sprintf("%x", sha256.Sum256(d))
+	return sha256cache[p]
 }
 
 // SESSION =================================
