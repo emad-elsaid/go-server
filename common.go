@@ -29,7 +29,6 @@ const (
 	APP_NAME            = "go-server"
 	STATIC_DIR_PATH     = "public"
 	BIND_ADDRESS        = "0.0.0.0:3000"
-	VIEWS_EXTENSION     = ".html"
 	SESSION_COOKIE_NAME = APP_NAME + "_session"
 	CSRF_COOKIE_NAME    = APP_NAME + "_csrf"
 )
