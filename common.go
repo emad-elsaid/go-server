@@ -158,6 +158,12 @@ func handlerFuncToHttpHandler(handler HandlerFunc) http.HandlerFunc {
 	}
 }
 
+func Text(out fmt.Stringer) Output {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(out.String()))
+	}
+}
+
 func NotFound(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "", http.StatusNotFound)
 }
