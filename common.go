@@ -201,28 +201,6 @@ func Delete(path string, handler HandlerFunc, middlewares ...func(http.HandlerFu
 	)
 }
 
-// HELPERS ===================================
-var sha256cache = map[string]string{}
-
-func Sha256(p string) string {
-	if v, ok := sha256cache[p]; ok {
-		return v
-	}
-
-	f, err := os.Open(p)
-	if err != nil {
-		return err.Error()
-	}
-
-	d, err := io.ReadAll(f)
-	if err != nil {
-		return err.Error()
-	}
-
-	sha256cache[p] = fmt.Sprintf("%x", sha256.Sum256(d))
-	return sha256cache[p]
-}
-
 // SESSION =================================
 
 func Session(r *http.Request) *sessions.Session {
@@ -292,4 +270,25 @@ func NullString(s string) sql.NullString {
 		String: s,
 		Valid:  len(s) > 0,
 	}
+}
+
+var sha256cache = map[string]string{}
+
+func Sha256(p string) string {
+	if v, ok := sha256cache[p]; ok {
+		return v
+	}
+
+	f, err := os.Open(p)
+	if err != nil {
+		return err.Error()
+	}
+
+	d, err := io.ReadAll(f)
+	if err != nil {
+		return err.Error()
+	}
+
+	sha256cache[p] = fmt.Sprintf("%x", sha256.Sum256(d))
+	return sha256cache[p]
 }
