@@ -2,9 +2,10 @@ package attr
 
 import (
 	"html"
+	"html/template"
 )
 
-type Attribute string
+type Attribute template.HTMLAttr
 
 func (a Attribute) String() string { return string(a) }
 

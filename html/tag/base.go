@@ -3,12 +3,13 @@ package tag
 import (
 	"fmt"
 	"html"
+	"html/template"
 	"strings"
 
 	"github.com/emad-elsaid/go-server/html/attr"
 )
 
-type Element string
+type Element template.HTML
 
 func (e Element) String() string { return string(e) }
 
