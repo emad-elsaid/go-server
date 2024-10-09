@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	Get("/", func(r Request) Output {
+	Get("/", func(r Request) Response {
 		return Text(
 			Layout(
 				t.String("Hello World!"),

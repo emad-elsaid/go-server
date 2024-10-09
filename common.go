@@ -64,10 +64,8 @@ func defaultMiddlewares() []func(http.Handler) http.Handler {
 
 // Some aliases to make it shorter to write handlers
 type (
-	Response = http.ResponseWriter
 	Request  = *http.Request
-	Output   = http.HandlerFunc
-	Locals   map[string]interface{} // passed to views/templates
+	Response = http.HandlerFunc
 )
 
 func init() {
@@ -142,7 +140,7 @@ func (p queryLogger) QueryRow(ctx context.Context, q string, args ...interface{}
 
 // Responses functions ==========================================
 
-type HandlerFunc func(*http.Request) Output
+type HandlerFunc func(*http.Request) Response
 
 func handlerFuncToHttpHandler(handler HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -150,7 +148,7 @@ func handlerFuncToHttpHandler(handler HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func Text(out fmt.Stringer) Output {
+func Text(out fmt.Stringer) Response {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(out.String()))
 	}
