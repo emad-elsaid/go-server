@@ -38,4 +38,29 @@ func Tag(name string, cs ...fmt.Stringer) Element {
 	return Element(b.String())
 }
 
+func Tags(cs ...Element) Element {
+	var b strings.Builder
+
+	for i := range cs {
+		b.WriteString(cs[i].String())
+	}
+
+	return Element(b.String())
+}
+
+func VoidTag(name string, cs ...attr.Attribute) Element {
+	var b strings.Builder
+
+	b.WriteString("<" + name)
+
+	for i := range cs {
+		b.WriteRune(' ')
+		b.WriteString(cs[i].String())
+	}
+
+	b.WriteString("/>")
+
+	return Element(b.String())
+}
+
 func String(s string) Element { return Element(html.EscapeString(s)) }

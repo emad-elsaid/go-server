@@ -15,13 +15,15 @@ var pkg = flag.String("pkg", "tag", "package name the output belongs to")
 var tpl = flag.String("template", "tag", "template to use either tag or attr")
 
 var imports = map[string][]string{
-	"tag":  {`import "fmt"`},
-	"attr": {""},
+	"tag":     {`import "fmt"`},
+	"attr":    {""},
+	"voidtag": {`import "github.com/emad-elsaid/go-server/html/attr"`},
 }
 
 var tpls = map[string]string{
-	"tag":  `func %s(c ...fmt.Stringer) Element { return Tag("%s", c...) }`,
-	"attr": `func %s(v string) Attribute { return Attr("%s", v) }`,
+	"tag":     `func %s(c ...fmt.Stringer) Element { return Tag("%s", c...) }`,
+	"attr":    `func %s(v string) Attribute { return Attr("%s", v) }`,
+	"voidtag": `func %s(c ...attr.Attribute) Element { return VoidTag("%s", c...) }`,
 }
 
 func main() {

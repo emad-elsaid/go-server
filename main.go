@@ -17,12 +17,18 @@ func main() {
 	Start()
 }
 
+func Meta() t.Element {
+	return t.Tags(
+		t.Meta(a.Charset("utf-8")),
+		t.Meta(a.Name("viewport"), a.Content("width=device-width, initial-scale=1")),
+	)
+}
+
 func Layout(view t.Element) t.Element {
 	return t.Html(
 		a.Lang("en"),
 		t.Head(
-			t.Meta(a.Charset("utf-8")),
-			t.Meta(a.Name("viewport"), a.Content("width=device-width, initial-scale=1")),
+			Meta(),
 			t.Link(a.Rel("stylesheet"), a.Href("/public/style.css?v="+Sha256("public/style.css"))),
 			t.Title(t.String("Hello World!")),
 		),
