@@ -5,14 +5,12 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
-	"database/sql"
 	"fmt"
 	"io"
 	"log"
 	"log/slog"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -140,7 +138,7 @@ func (p queryLogger) QueryRow(ctx context.Context, q string, args ...interface{}
 
 // Responses functions ==========================================
 
-type HandlerFunc func(*http.Request) Response
+type HandlerFunc func(Request) Response
 
 func handlerFuncToHttpHandler(handler HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -251,23 +249,6 @@ func requestLoggerMiddleware(h http.Handler) http.Handler {
 }
 
 // HELPERS FUNCTIONS ======================
-
-func atoi32(s string) int32 {
-	i, _ := strconv.ParseInt(s, 10, 32)
-	return int32(i)
-}
-
-func atoi64(s string) int64 {
-	i, _ := strconv.ParseInt(s, 10, 64)
-	return i
-}
-
-func NullString(s string) sql.NullString {
-	return sql.NullString{
-		String: s,
-		Valid:  len(s) > 0,
-	}
-}
 
 var sha256cache = map[string]string{}
 
