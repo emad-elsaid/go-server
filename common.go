@@ -21,6 +21,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/lib/pq"
 	"github.com/lmittmann/tint"
+	"maragu.dev/gomponents"
 )
 
 const (
@@ -32,7 +33,7 @@ const (
 )
 
 var (
-	Q       *Queries
+	Query   *Queries
 	router  = http.NewServeMux()
 	session = sessions.NewCookieStore([]byte(os.Getenv("SESSION_SECRET")))
 	CSRF    = csrf.TemplateField
@@ -79,7 +80,7 @@ func init() {
 		log.Fatal(err)
 	}
 
-	Q = New(queryLogger{db})
+	Query = New(queryLogger{db})
 	session.Options.HttpOnly = true
 }
 
@@ -146,9 +147,9 @@ func handlerFuncToHttpHandler(handler HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func Text(out fmt.Stringer) Response {
+func TextO(out gomponents.Node) Response {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(out.String()))
+		out.Render(w)
 	}
 }
 

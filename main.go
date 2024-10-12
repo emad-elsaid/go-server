@@ -1,15 +1,15 @@
 package main
 
 import (
-	a "github.com/emad-elsaid/go-server/html/attr"
-	t "github.com/emad-elsaid/go-server/html/tag"
+	. "maragu.dev/gomponents"
+	. "maragu.dev/gomponents/html"
 )
 
 func main() {
 	Get("/", func(r Request) Response {
-		return Text(
+		return TextO(
 			Layout(
-				t.String("Hello World!"),
+				Text("Hello World!"),
 			),
 		)
 	})
@@ -17,24 +17,24 @@ func main() {
 	Start()
 }
 
-func Meta() t.Element {
-	return t.Tags(
-		t.Meta(a.Charset("utf-8")),
-		t.Meta(a.Name("viewport"), a.Content("width=device-width, initial-scale=1")),
-	)
+func Metas() Node {
+	return Group{
+		Meta(Charset("utf-8")),
+		Meta(Name("viewport"), Content("width=device-width, initial-scale=1")),
+	}
 }
 
-func Layout(view t.Element) t.Element {
-	return t.Html(
-		a.Lang("en"),
-		t.Head(
-			Meta(),
-			t.Link(a.Rel("stylesheet"), a.Href("/public/style.css?v="+Sha256("public/style.css"))),
-			t.Title(t.String("Hello World!")),
+func Layout(view Node) Node {
+	return HTML(
+		Lang("en"),
+		Head(
+			Metas(),
+			Link(Rel("stylesheet"), Href("/public/style.css?v="+Sha256("public/style.css"))),
+			Title("Hello World!"),
 		),
-		t.Body(
-			t.Section(a.Class("section"),
-				t.Div(a.Class("container is-max-desktop"),
+		Body(
+			Section(Class("section"),
+				Div(Class("container is-max-desktop"),
 					view,
 				),
 			),
