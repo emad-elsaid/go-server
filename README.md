@@ -9,7 +9,6 @@ It started when I was [converting a ruby service to go](https://www.emadelsaid.c
 
 ## Features
 
-- Compiles and embeds views from `views` directory
 - Postgresql operations (create, drop, setup, seed, migrate up/down)
 - Sinatra shorthand functions to define routes (GET, POST, DELETE)
 - Session/Cookies
@@ -120,31 +119,6 @@ defer LogDuration(DEBUG, "View", name)()
 ```
 
 There are two colors defined so far `DEBUG` and `INFO` these are constants that defines shell escape characters for coloring the following text.
-
-
-## Views
-
-views are `.html` files under `views` directory. they're embedded to the program with go `embed` package and parsed with `html/template` package before starting the server.
-
-Rendering the view can be done using `Render` function as the example above.
-
-
-## Helpers
-
-helper functions are passed while parsing the views files. you can use `HELPER` function to add more helpers. here is an example
-
-```go
-// helper to check if list include a string
-HELPER("include", func(list []string, str string) bool {
-    for _, i := range list {
-        if i == str {
-            return true
-        }
-    }
-
-    return false
-})
-```
 
 ## Session
 
