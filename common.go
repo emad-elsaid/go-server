@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"path"
 	"strings"
 	"time"
 
@@ -25,20 +26,49 @@ import (
 	"maragu.dev/gomponents"
 )
 
-const (
-	AppName    = "go-server"
-	publicPath = "public"
-)
+func init() {
+	slog.SetDefault(slog.New(
+		tint.NewHandler(os.Stdout, &tint.Options{
+			Level:      slog.LevelDebug,
+			TimeFormat: time.Kitchen,
+		}),
+	))
 
-var (
-	Query   *db.Queries
-	router  = http.NewServeMux()
-	session = sessions.NewCookieStore([]byte(os.Getenv("SESSION_SECRET")))
-	CSRF    = csrf.TemplateField
-)
+	wd, err := os.Getwd()
+	if err != nil {
+		wd = "/app"
+	}
+
+	NewApp(path.Base(wd), "0.0.0.0:3000")
+}
+
+var defaultApp *App
+
+type App struct {
+	Name       string
+	Address    string
+	PublicPath string
+	Mux        *http.ServeMux
+	DB         *db.Queries
+	Session    *sessions.CookieStore
+}
+
+func NewApp(name, address string) *App {
+	defaultApp = &App{
+		Name:       name,
+		Address:    address,
+		PublicPath: "public",
+		Mux:        http.NewServeMux(),
+		Session:    sessions.NewCookieStore([]byte(os.Getenv("SESSION_SECRET"))),
+	}
+
+	defaultApp.Session.Options.HttpOnly = true
+
+	return defaultApp
+}
 
 func defaultMiddlewares() []func(http.Handler) http.Handler {
-	const csrfCookieName = AppName + "_csrf"
+	csrfCookieName := defaultApp.Name + "_csrf"
 
 	crsfOpts := []csrf.Option{
 		csrf.Path("/"),
@@ -67,39 +97,28 @@ type (
 	Response = http.HandlerFunc
 )
 
-func init() {
-	slog.SetDefault(slog.New(
-		tint.NewHandler(os.Stdout, &tint.Options{
-			Level:      slog.LevelDebug,
-			TimeFormat: time.Kitchen,
-		}),
-	))
-
+func Start() {
 	pool, err := pgxpool.New(context.Background(), os.Getenv("DATABASE_URL"))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	Query = db.New(queryLogger{pool})
-	session.Options.HttpOnly = true
-}
+	defaultApp.DB = db.New(queryLogger{pool})
+	defaultApp.Mux.HandleFunc("GET /"+defaultApp.PublicPath+"/", staticDirectoryMiddleware())
 
-func Start(address string) {
-	router.HandleFunc("GET /"+publicPath+"/", staticDirectoryMiddleware())
-
-	var handler http.Handler = router
+	var handler http.Handler = defaultApp.Mux
 	for _, v := range defaultMiddlewares() {
 		handler = v(handler)
 	}
 
 	srv := &http.Server{
 		Handler:      handler,
-		Addr:         address,
+		Addr:         defaultApp.Address,
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}
 
-	slog.Info("Server listening", "address", address)
+	slog.Info("Server listening", "address", defaultApp.Address)
 	slog.Info("Server closing", "error", srv.ListenAndServe())
 }
 
@@ -180,19 +199,19 @@ func Redirect(url string) http.HandlerFunc {
 // ROUTES functions ==========================================
 
 func Get(path string, handler HandlerFunc, middlewares ...func(http.HandlerFunc) http.HandlerFunc) {
-	router.HandleFunc("GET "+path,
+	defaultApp.Mux.HandleFunc("GET "+path,
 		applyMiddlewares(handlerFuncToHttpHandler(handler), middlewares...),
 	)
 }
 
 func Post(path string, handler HandlerFunc, middlewares ...func(http.HandlerFunc) http.HandlerFunc) {
-	router.HandleFunc("POST "+path,
+	defaultApp.Mux.HandleFunc("POST "+path,
 		applyMiddlewares(handlerFuncToHttpHandler(handler), middlewares...),
 	)
 }
 
 func Delete(path string, handler HandlerFunc, middlewares ...func(http.HandlerFunc) http.HandlerFunc) {
-	router.HandleFunc("DELETE "+path,
+	defaultApp.Mux.HandleFunc("DELETE "+path,
 		applyMiddlewares(handlerFuncToHttpHandler(handler), middlewares...),
 	)
 }
@@ -200,8 +219,8 @@ func Delete(path string, handler HandlerFunc, middlewares ...func(http.HandlerFu
 // SESSION =================================
 
 func Session(r *http.Request) *sessions.Session {
-	const cookieName = AppName + "_session"
-	s, _ := session.Get(r, cookieName)
+	cookieName := defaultApp.Name + "_session"
+	s, _ := defaultApp.Session.Get(r, cookieName)
 	return s
 }
 
@@ -216,9 +235,9 @@ func applyMiddlewares(handler http.HandlerFunc, middlewares ...func(http.Handler
 }
 
 func staticDirectoryMiddleware() http.HandlerFunc {
-	dir := http.Dir(publicPath)
+	dir := http.Dir(defaultApp.PublicPath)
 	server := http.FileServer(dir)
-	handler := http.StripPrefix("/"+publicPath, server)
+	handler := http.StripPrefix("/"+defaultApp.PublicPath, server)
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasSuffix(r.URL.Path, "/") {
@@ -251,6 +270,8 @@ func requestLoggerMiddleware(h http.Handler) http.Handler {
 }
 
 // HELPERS FUNCTIONS ======================
+
+var CSRF = csrf.TemplateField
 
 var sha256cache = map[string]string{}
 

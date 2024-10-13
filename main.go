@@ -14,7 +14,7 @@ func main() {
 		)
 	})
 
-	Start("0.0.0.0:3000")
+	Start()
 }
 
 func Metas() Node {
