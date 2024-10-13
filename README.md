@@ -120,6 +120,12 @@ defer LogDuration(DEBUG, "View", name)()
 
 There are two colors defined so far `DEBUG` and `INFO` these are constants that defines shell escape characters for coloring the following text.
 
+## Views
+
+To create views you can use [gomponents](https://github.com/maragudk/gomponents)
+to avoid writing separate html template files, embed, parse them. instead
+gomponents allow generating html from Go.
+
 ## Session
 
 the code depends on `gorilla/session` . `SESSION` function returns an instance of the current request session.
