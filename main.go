@@ -7,7 +7,7 @@ import (
 
 func main() {
 	Get("/", func(r Request) Response {
-		return TextO(
+		return Ok(
 			Layout(
 				Text("Hello World!"),
 			),

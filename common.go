@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/emad-elsaid/go-server/db"
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/sessions"
 	"github.com/jackc/pgx/v5"
@@ -33,7 +34,7 @@ const (
 )
 
 var (
-	Query   *Queries
+	Query   *db.Queries
 	router  = http.NewServeMux()
 	session = sessions.NewCookieStore([]byte(os.Getenv("SESSION_SECRET")))
 	CSRF    = csrf.TemplateField
@@ -75,12 +76,12 @@ func init() {
 		}),
 	))
 
-	db, err := pgxpool.New(context.Background(), os.Getenv("DATABASE_URL"))
+	pool, err := pgxpool.New(context.Background(), os.Getenv("DATABASE_URL"))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	Query = New(queryLogger{db})
+	Query = db.New(queryLogger{pool})
 	session.Options.HttpOnly = true
 }
 
@@ -147,7 +148,7 @@ func handlerFuncToHttpHandler(handler HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func TextO(out gomponents.Node) Response {
+func Ok(out gomponents.Node) Response {
 	return func(w http.ResponseWriter, r *http.Request) {
 		out.Render(w)
 	}
