@@ -2,8 +2,9 @@ package main
 
 import (
 	b "github.com/willoma/bulma-gomponents"
-	. "maragu.dev/gomponents"
 	x "maragu.dev/gomponents-htmx"
+
+	. "maragu.dev/gomponents"
 	. "maragu.dev/gomponents/html"
 )
 
