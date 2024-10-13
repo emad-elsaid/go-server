@@ -42,7 +42,7 @@ func init() {
 	NewApp(path.Base(wd), "0.0.0.0:3000")
 }
 
-var defaultApp *App
+var DefaultApp *App
 
 type App struct {
 	Name       string
@@ -54,7 +54,7 @@ type App struct {
 }
 
 func NewApp(name, address string) *App {
-	defaultApp = &App{
+	DefaultApp = &App{
 		Name:       name,
 		Address:    address,
 		PublicPath: "public",
@@ -62,13 +62,13 @@ func NewApp(name, address string) *App {
 		Session:    sessions.NewCookieStore([]byte(os.Getenv("SESSION_SECRET"))),
 	}
 
-	defaultApp.Session.Options.HttpOnly = true
+	DefaultApp.Session.Options.HttpOnly = true
 
-	return defaultApp
+	return DefaultApp
 }
 
 func defaultMiddlewares() []func(http.Handler) http.Handler {
-	csrfCookieName := defaultApp.Name + "_csrf"
+	csrfCookieName := DefaultApp.Name + "_csrf"
 
 	crsfOpts := []csrf.Option{
 		csrf.Path("/"),
@@ -103,22 +103,22 @@ func Start() {
 		log.Fatal(err)
 	}
 
-	defaultApp.DB = db.New(queryLogger{pool})
-	defaultApp.Mux.HandleFunc("GET /"+defaultApp.PublicPath+"/", staticDirectoryMiddleware())
+	DefaultApp.DB = db.New(queryLogger{pool})
+	DefaultApp.Mux.HandleFunc("GET /"+DefaultApp.PublicPath+"/", staticDirectoryMiddleware())
 
-	var handler http.Handler = defaultApp.Mux
+	var handler http.Handler = DefaultApp.Mux
 	for _, v := range defaultMiddlewares() {
 		handler = v(handler)
 	}
 
 	srv := &http.Server{
 		Handler:      handler,
-		Addr:         defaultApp.Address,
+		Addr:         DefaultApp.Address,
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}
 
-	slog.Info("Server listening", "address", defaultApp.Address)
+	slog.Info("Server listening", "address", DefaultApp.Address)
 	slog.Info("Server closing", "error", srv.ListenAndServe())
 }
 
@@ -199,19 +199,19 @@ func Redirect(url string) http.HandlerFunc {
 // ROUTES functions ==========================================
 
 func Get(path string, handler HandlerFunc, middlewares ...func(http.HandlerFunc) http.HandlerFunc) {
-	defaultApp.Mux.HandleFunc("GET "+path,
+	DefaultApp.Mux.HandleFunc("GET "+path,
 		applyMiddlewares(handlerFuncToHttpHandler(handler), middlewares...),
 	)
 }
 
 func Post(path string, handler HandlerFunc, middlewares ...func(http.HandlerFunc) http.HandlerFunc) {
-	defaultApp.Mux.HandleFunc("POST "+path,
+	DefaultApp.Mux.HandleFunc("POST "+path,
 		applyMiddlewares(handlerFuncToHttpHandler(handler), middlewares...),
 	)
 }
 
 func Delete(path string, handler HandlerFunc, middlewares ...func(http.HandlerFunc) http.HandlerFunc) {
-	defaultApp.Mux.HandleFunc("DELETE "+path,
+	DefaultApp.Mux.HandleFunc("DELETE "+path,
 		applyMiddlewares(handlerFuncToHttpHandler(handler), middlewares...),
 	)
 }
@@ -219,8 +219,8 @@ func Delete(path string, handler HandlerFunc, middlewares ...func(http.HandlerFu
 // SESSION =================================
 
 func Session(r *http.Request) *sessions.Session {
-	cookieName := defaultApp.Name + "_session"
-	s, _ := defaultApp.Session.Get(r, cookieName)
+	cookieName := DefaultApp.Name + "_session"
+	s, _ := DefaultApp.Session.Get(r, cookieName)
 	return s
 }
 
@@ -235,9 +235,9 @@ func applyMiddlewares(handler http.HandlerFunc, middlewares ...func(http.Handler
 }
 
 func staticDirectoryMiddleware() http.HandlerFunc {
-	dir := http.Dir(defaultApp.PublicPath)
+	dir := http.Dir(DefaultApp.PublicPath)
 	server := http.FileServer(dir)
-	handler := http.StripPrefix("/"+defaultApp.PublicPath, server)
+	handler := http.StripPrefix("/"+DefaultApp.PublicPath, server)
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasSuffix(r.URL.Path, "/") {
