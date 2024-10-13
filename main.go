@@ -1,15 +1,27 @@
 package main
 
 import (
+	b "github.com/willoma/bulma-gomponents"
 	. "maragu.dev/gomponents"
+	x "maragu.dev/gomponents-htmx"
 	. "maragu.dev/gomponents/html"
 )
 
 func main() {
-	Get("/", func(r Request) Response {
+	Get("/{$}", func(r Request) Response {
 		return Ok(
 			Layout(
-				Text("Hello World!"),
+				Navbar(),
+				b.Section(Text("Hello World!")),
+			),
+		)
+	})
+
+	Get("/about", func(r Request) Response {
+		return Ok(
+			Layout(
+				Navbar(),
+				b.Section(Text("About")),
 			),
 		)
 	})
@@ -17,27 +29,23 @@ func main() {
 	Start()
 }
 
-func Metas() Node {
-	return Group{
-		Meta(Charset("utf-8")),
-		Meta(Name("viewport"), Content("width=device-width, initial-scale=1")),
-	}
+func Navbar() Node {
+	return b.Navbar(
+		b.Dark,
+		x.Boost("true"),
+		b.NavbarStart(
+			b.NavbarAHref("/", "Home"),
+			b.NavbarAHref("/about", "About"),
+		),
+	)
 }
 
-func Layout(view Node) Node {
-	return HTML(
+func Layout(view ...Node) Node {
+	return b.HTML(
 		Lang("en"),
-		Head(
-			Metas(),
-			Link(Rel("stylesheet"), Href("/public/style.css?v="+Sha256("public/style.css"))),
-			Title("Hello World!"),
-		),
-		Body(
-			Section(Class("section"),
-				Div(Class("container is-max-desktop"),
-					view,
-				),
-			),
-		),
+		b.HTitle("Hello World!"),
+		b.Stylesheet("/public/style.css?v="+Sha256("public/style.css")),
+		b.Script("https://unpkg.com/htmx.org@2.0.3"),
+		Group(view),
 	)
 }
