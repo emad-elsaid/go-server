@@ -26,11 +26,8 @@ import (
 )
 
 const (
-	APP_NAME            = "go-server"
-	STATIC_DIR_PATH     = "public"
-	BIND_ADDRESS        = "0.0.0.0:3000"
-	SESSION_COOKIE_NAME = APP_NAME + "_session"
-	CSRF_COOKIE_NAME    = APP_NAME + "_csrf"
+	AppName    = "go-server"
+	publicPath = "public"
 )
 
 var (
@@ -41,10 +38,12 @@ var (
 )
 
 func defaultMiddlewares() []func(http.Handler) http.Handler {
+	const csrfCookieName = AppName + "_csrf"
+
 	crsfOpts := []csrf.Option{
 		csrf.Path("/"),
 		csrf.FieldName("csrf"),
-		csrf.CookieName(CSRF_COOKIE_NAME),
+		csrf.CookieName(csrfCookieName),
 	}
 
 	sessionSecret := []byte(os.Getenv("SESSION_SECRET"))
@@ -85,8 +84,8 @@ func init() {
 	session.Options.HttpOnly = true
 }
 
-func Start() {
-	router.HandleFunc("GET /"+STATIC_DIR_PATH+"/", staticDirectoryMiddleware())
+func Start(address string) {
+	router.HandleFunc("GET /"+publicPath+"/", staticDirectoryMiddleware())
 
 	var handler http.Handler = router
 	for _, v := range defaultMiddlewares() {
@@ -95,21 +94,21 @@ func Start() {
 
 	srv := &http.Server{
 		Handler:      handler,
-		Addr:         BIND_ADDRESS,
+		Addr:         address,
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}
 
-	slog.Info("Server listening", "address", BIND_ADDRESS)
+	slog.Info("Server listening", "address", address)
 	slog.Info("Server closing", "error", srv.ListenAndServe())
 }
 
 // LOGGING ===============================================
 
-func LogDuration(msg string, args ...interface{}) func() {
+func LogDuration() func(msg string, args ...interface{}) {
 	start := time.Now()
 
-	return func() {
+	return func(msg string, args ...interface{}) {
 		slog.
 			With("duration", time.Now().Sub(start)).
 			With(args...).
@@ -124,17 +123,17 @@ type queryLogger struct {
 }
 
 func (p queryLogger) Exec(ctx context.Context, q string, args ...interface{}) (pgconn.CommandTag, error) {
-	defer LogDuration("DB Exec", "query", q, "args", args)()
+	defer LogDuration()("DB Exec", "query", q, "args", args)
 	return p.db.Exec(ctx, q, args...)
 }
 
 func (p queryLogger) Query(ctx context.Context, q string, args ...interface{}) (pgx.Rows, error) {
-	defer LogDuration("DB Query", "query", q, "args", args)()
+	defer LogDuration()("DB Query", "query", q, "args", args)
 	return p.db.Query(ctx, q, args...)
 }
 
 func (p queryLogger) QueryRow(ctx context.Context, q string, args ...interface{}) pgx.Row {
-	defer LogDuration("DB Row", "query", q, "args", args)()
+	defer LogDuration()("DB Row", "query", q, "args", args)
 	return p.db.QueryRow(ctx, q, args...)
 }
 
@@ -201,7 +200,8 @@ func Delete(path string, handler HandlerFunc, middlewares ...func(http.HandlerFu
 // SESSION =================================
 
 func Session(r *http.Request) *sessions.Session {
-	s, _ := session.Get(r, SESSION_COOKIE_NAME)
+	const cookieName = AppName + "_session"
+	s, _ := session.Get(r, cookieName)
 	return s
 }
 
@@ -216,9 +216,9 @@ func applyMiddlewares(handler http.HandlerFunc, middlewares ...func(http.Handler
 }
 
 func staticDirectoryMiddleware() http.HandlerFunc {
-	dir := http.Dir(STATIC_DIR_PATH)
+	dir := http.Dir(publicPath)
 	server := http.FileServer(dir)
-	handler := http.StripPrefix("/"+STATIC_DIR_PATH, server)
+	handler := http.StripPrefix("/"+publicPath, server)
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasSuffix(r.URL.Path, "/") {
@@ -245,7 +245,7 @@ func methodOverrideMiddleware(h http.Handler) http.Handler {
 
 func requestLoggerMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer LogDuration(r.URL.Path, "method", r.Method)()
+		defer LogDuration()(r.URL.Path, "method", r.Method)
 		h.ServeHTTP(w, r)
 	})
 }
