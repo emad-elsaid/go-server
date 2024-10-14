@@ -18,9 +18,8 @@ import (
 	"github.com/emad-elsaid/go-server/db"
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/sessions"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/tracelog"
 	_ "github.com/lib/pq"
 	"github.com/lmittmann/tint"
 	"maragu.dev/gomponents"
@@ -98,12 +97,24 @@ type (
 )
 
 func Start() {
-	pool, err := pgxpool.New(context.Background(), os.Getenv("DATABASE_URL"))
+	ctx := context.Background()
+
+	config, err := pgxpool.ParseConfig(os.Getenv("DATABASE_URL"))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	DefaultApp.DB = db.New(queryLogger{pool})
+	config.ConnConfig.Tracer = &tracelog.TraceLog{
+		Logger:   (*db.Logger)(slog.Default()),
+		LogLevel: tracelog.LogLevelInfo,
+	}
+
+	pool, err := pgxpool.NewWithConfig(ctx, config)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	DefaultApp.DB = db.New(pool)
 	DefaultApp.Mux.HandleFunc("GET /"+DefaultApp.PublicPath+"/", staticDirectoryMiddleware())
 
 	var handler http.Handler = DefaultApp.Mux
@@ -133,27 +144,6 @@ func LogDuration() func(msg string, args ...interface{}) {
 			With(args...).
 			Debug(msg)
 	}
-}
-
-// DATABASE LOGGER ===================================
-
-type queryLogger struct {
-	db *pgxpool.Pool
-}
-
-func (p queryLogger) Exec(ctx context.Context, q string, args ...interface{}) (pgconn.CommandTag, error) {
-	defer LogDuration()("DB Exec", "query", q, "args", args)
-	return p.db.Exec(ctx, q, args...)
-}
-
-func (p queryLogger) Query(ctx context.Context, q string, args ...interface{}) (pgx.Rows, error) {
-	defer LogDuration()("DB Query", "query", q, "args", args)
-	return p.db.Query(ctx, q, args...)
-}
-
-func (p queryLogger) QueryRow(ctx context.Context, q string, args ...interface{}) pgx.Row {
-	defer LogDuration()("DB Row", "query", q, "args", args)
-	return p.db.QueryRow(ctx, q, args...)
 }
 
 // Responses functions ==========================================
